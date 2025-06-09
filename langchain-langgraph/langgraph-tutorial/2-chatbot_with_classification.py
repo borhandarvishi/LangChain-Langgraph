@@ -23,7 +23,7 @@ llm = init_chat_model("gpt-4o-mini", temperature=0)
 class MessageClassifier(BaseModel):
     message_type: Literal["emotional","logical"] = Field(
         ...,
-        description="Classify if the message requires an emotional (therapist) or logical response." 
+        description="Classify if the message requires an emotional (therapist) or logical response." )
 
 # the state is defineing the type of information that we want to have  in our graph.
 class State(TypedDict):
@@ -38,7 +38,7 @@ def classify_message(state: State) -> State:
 
     result = classifier_llm.invoke([
         {
-            "role": "systemt",
+            "role": "system",
             "content": """Classify the user message as either:
             - 'emotional': if it asks for emotional support, therapy, deals with feelings, or personal problems
             - 'logical': if it asks for facts, information, logical analysis, or practical solutions
@@ -78,7 +78,7 @@ def therapist_agent(state: State) -> State:
     ]
 
     reply = llm.invoke(messages)
-     return {"messages": [{"role": "assistant", "content": reply.content}]}
+    return {"messages": [{"role": "assistant", "content": reply.content}]}
     
 
 def logical_agent(state: State):
@@ -112,7 +112,7 @@ graph_builder.add_node("logical", logical_agent)
 
 graph_builder.add_edge(START, "classifier")
 graph_builder.add_edge("classifier", "router")
-graph_builder.add_conditional_edge(
+graph_builder.add_conditional_edges(
     "router",
     lambda state: state.get("next"),
     {
@@ -127,7 +127,7 @@ graph_builder.add_edge("logical", END)
 # let's run the graph 
 graph = graph_builder.compile()
 
-def run_chatbot(user_message: str):
+def run_chatbot():
     state = {"message":[],"message_type": None}
 
     while True:
@@ -136,5 +136,14 @@ def run_chatbot(user_message: str):
             print("Exiting the chatbot.")
             break
         state["messages"] = state.get("messages",[]) + [{"role": "user", "content": user_input}]
-        
+
         state = graph.invoke(state)
+
+        if state.get("messages") and len(state["messages"]) > 0:
+            last_message = state["messages"][-1]
+            print(f"AI: {last_message.content}")
+
+
+if __name__ == "__main__":  
+    run_chatbot()
+    
